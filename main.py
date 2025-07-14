@@ -13,41 +13,41 @@ BAN_KEYWORDS = [
     'есть вакансии', 'есть свободные вакансии', 'на удаленке',
     'на удаленной работе', 'удаленная работа', 'зарплата от', 'свободный граффик',
     'перейди по ссылке', 'хуй', 'похуй', 'похую', 'похуист', 'нахуй', 'нахуя',
-    'захуй', 'похую', 'хуйня', 'хуйней', 'хуево', 'хуевый', 'хуесос', 'хуесоска',
+    'захуй', 'хуйня', 'хуйней', 'хуево', 'хуевый', 'хуесос', 'хуесоска',
     'пизда', 'пиздец', 'пиздевый', 'ебать', 'ебаный', 'ебануться', 'ебнутый',
     'оплата достойная', 'требуются 2', 'требуются 2-3', 'за каждый час',
     'пишите в личные сообщения', 'с оплатой не обижу', 'с оплатой не обидем',
     'договорная', 'требуются несколько помощников', 'работа простая',
-    'оплчивается щедро', 'оплата соответствующая', 'пиши в лс', 'за подробностями',
+    'оплчивается щедро', 'пиши в лс', 'за подробностями',
     'в час', 'требуются люди', 'на постоянную работу', 'пиши в личку',
     'пишите в личку', '2-3 человека нужны', 'нужны срочно', 'дела легкие',
     'наличкой', 'справится любой', 'на пару часов', 'требуются сотрудники',
-    'требуются работники', 'на постоянную работу', 'требуется работник',
-    'требуется сотрудник', 'подработка', 'нужны люди', 'нужны на сегодня',
-    'на сегодня', 'выходить будет прилично', 'выходит прилично',
-    'буквально за', 'места ограничены', 'присоединяйся к нашей команде', 'личку', 
-    'личка', 'личке', 'тыс', 'тыс.', 'лс', '₽', 'руб', 'рублей', 'рубли', 'рублем', 
-    'рублём' 'халтурка', 'халтура', 'зарабатывать', зарабатывай', 'заработок', 
-    'работа', 'П', 'Р', 'заработать', 'заработал', 'заработай'
+    'требуются работники', 'требуется работник', 'требуется сотрудник',
+    'подработка', 'нужны люди', 'нужны на сегодня', 'на сегодня',
+    'выходить будет прилично', 'выходит прилично',
+    'буквально за', 'места ограничены', 'присоединяйся к нашей команде',
+    'личку', 'личка', 'личке', 'тыс', 'тыс.', 'лс', '₽', 'руб', 'рублей',
+    'рубли', 'рублем', 'рублём', 'халтурка', 'халтура', 'зарабатывать',
+    'зарабатывай', 'заработок', 'работа', 'п', 'р', 'заработать',
+    'заработал', 'заработай'
 ]
 
-# Паттерн для цен: три и более цифр, опциональный пробел, затем ₽ или Р/р
+# Паттерн для цен: две и более цифр, опциональный пробел, затем ₽ или Р/р
 PRICE_PATTERN = re.compile(r"\b\d{2,}\s?(?:₽|[Рр])\b")
 
-# Удаление обычных сообщений
+# Обработка новых текстовых сообщений
 async def handle_new_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.message
-    if message and message.text:
-        text_lower = message.text.lower()
-        # проверяем по списку ключевых слов или по паттерну цены
-        if any(keyword in text_lower for keyword in BAN_KEYWORDS) or PRICE_PATTERN.search(message.text):
+    msg = update.message
+    if msg and msg.text:
+        text_lower = msg.text.lower()
+        if any(keyword in text_lower for keyword in BAN_KEYWORDS) or PRICE_PATTERN.search(msg.text):
             try:
-                await message.delete()
-                print(f"Удалено сообщение от @{message.from_user.username}")
+                await msg.delete()
+                print(f"Удалено сообщение от @{msg.from_user.username}")
             except Exception as e:
                 print(f"Ошибка удаления: {e}")
 
-# Удаление отредактированных сообщений
+# Обработка отредактированных сообщений
 async def handle_edited_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.edited_message
     if msg and msg.text:
@@ -59,13 +59,12 @@ async def handle_edited_message(update: Update, context: ContextTypes.DEFAULT_TY
             except Exception as e:
                 print(f"Ошибка удаления редактированного: {e}")
 
-# Токен бота из переменных окружения
+# Токен бота берётся из переменных окружения
 TOKEN = os.environ["BOT_TOKEN"]
 
 # Инициализация и запуск приложения
-app = ApplicationBuilder().token(TOKEN).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_new_message))
-app.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE & filters.TEXT, handle_edited_message))
-
 if __name__ == "__main__":
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_new_message))
+    app.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE & filters.TEXT, handle_edited_message))
     app.run_polling()
