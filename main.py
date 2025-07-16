@@ -32,38 +32,56 @@ BAN_KEYWORDS = [
     'заработал', 'заработай'
 ]
 
-# Паттерн для цен: две и более цифр, опциональный пробел, затем ₽ или Р/р
-PRICE_PATTERN = re.compile(r"\b\d{2,}\s?(?:₽|[Рр])\b")
+# 2) Сборка единого паттерна: для каждого ключевика убираем пробелы,
+#    а буквы соединяем через \s* (0 или более любых пробельных),
+#    и оборачиваем в \b...\b, чтобы не захватывать вложенные куски.
+spaced_patterns = []
+for kw in BAN_KEYWORDS:
+    chars = list(kw.replace(' ', ''))        # ['п','о','д','р','а','б','о','т','к','а']
+    # экранируем каждый символ и склеиваем через \s*
+    p = r'\b' + r'\s*'.join(re.escape(c) for c in chars) + r'\b'
+    spaced_patterns.append(p)
 
-# Обработка новых текстовых сообщений
+SPACED_KEYWORDS_PATTERN = re.compile(
+    '|'.join(spaced_patterns),
+    flags=re.IGNORECASE
+)
+
+# 3) Аналогично улучшаем паттерн для цен, чтобы ловить "2 0 0 0 ₽", "3 0 0 0р" и т.п.
+PRICE_PATTERN = re.compile(
+    r'\b(?:\d\s*){2,}(?:₽|[Рр])\b',
+    flags=re.IGNORECASE
+)
+
 async def handle_new_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
-    if msg and msg.text:
-        text_lower = msg.text.lower()
-        if any(keyword in text_lower for keyword in BAN_KEYWORDS) or PRICE_PATTERN.search(msg.text):
-            try:
-                await msg.delete()
-                print(f"Удалено сообщение от @{msg.from_user.username}")
-            except Exception as e:
-                print(f"Ошибка удаления: {e}")
+    if not msg or not msg.text:
+        return
 
-# Обработка отредактированных сообщений
+    text = msg.text
+    # теперь проверяем строго по одной регулярке:
+    if SPACED_KEYWORDS_PATTERN.search(text) or PRICE_PATTERN.search(text):
+        try:
+            await msg.delete()
+            print(f"Удалено сообщение от @{msg.from_user.username}")
+        except Exception as e:
+            print(f"Ошибка удаления: {e}")
+
 async def handle_edited_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.edited_message
-    if msg and msg.text:
-        text_lower = msg.text.lower()
-        if any(keyword in text_lower for keyword in BAN_KEYWORDS) or PRICE_PATTERN.search(msg.text):
-            try:
-                await msg.delete()
-                print(f"Удалено ОТРЕДАКТИРОВАННОЕ сообщение от @{msg.from_user.username}")
-            except Exception as e:
-                print(f"Ошибка удаления редактированного: {e}")
+    if not msg or not msg.text:
+        return
 
-# Токен бота берётся из переменных окружения
-TOKEN = os.environ["BOT_TOKEN"]
+    text = msg.text
+    if SPACED_KEYWORDS_PATTERN.search(text) or PRICE_PATTERN.search(text):
+        try:
+            await msg.delete()
+            print(f"Удалено ОТРЕДАКТИРОВАННОЕ сообщение от @{msg.from_user.username}")
+        except Exception as e:
+            print(f"Ошибка удаления редактированного: {e}")
 
-# Инициализация и запуск приложения
 if __name__ == "__main__":
+    TOKEN = os.environ["BOT_TOKEN"]
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_new_message))
     app.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE & filters.TEXT, handle_edited_message))
